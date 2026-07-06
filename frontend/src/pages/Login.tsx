@@ -3,6 +3,7 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -21,6 +22,7 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { login, isLoading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +30,7 @@ export function Login() {
 
     try {
       await login(email, password);
+      navigate('/', { replace: true });
     } catch (err) {
       setError('Invalid credentials. Please try again.');
     }
