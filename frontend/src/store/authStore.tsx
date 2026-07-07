@@ -26,6 +26,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
+// When auth is disabled for local development (VITE_DISABLE_AUTH=true),
+// treat the app as already signed in with a built-in dev identity so the
+// chat UI is usable without a login flow.
+const DISABLE_AUTH = import.meta.env.VITE_DISABLE_AUTH === 'true';
+const DEV_USER: User = {
+  id: 'dev-user',
+  email: 'dev@example.com',
+  role: 'support_engineer',
+  full_name: 'Dev User',
+};
+const DEV_TOKEN = 'dev-token';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -33,6 +45,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load token from localStorage on mount
   useEffect(() => {
+    if (DISABLE_AUTH) {
+      setToken(DEV_TOKEN);
+      setUser(DEV_USER);
+      setIsLoading(false);
+      return;
+    }
+
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
 

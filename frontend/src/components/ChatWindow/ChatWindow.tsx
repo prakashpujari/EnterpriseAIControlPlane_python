@@ -26,6 +26,7 @@ interface Message {
   content: string;
   sources?: Array<{ title: string; source: string }>;
   timestamp: Date;
+  model_used?: string;
 }
 
 interface ChatWindowProps {

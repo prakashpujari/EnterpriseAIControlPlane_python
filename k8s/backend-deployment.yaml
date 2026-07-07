@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enterprise-ai-backend
+  labels:
+    app: enterprise-ai-backend
+    tier: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: enterprise-ai-backend
+  template:
+    metadata:
+      labels:
+        app: enterprise-ai-backend
+        tier: backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/enterprise-ai/backend:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-ai-secrets
+                  key: database-url
+            - name: REDIS_URL
+              value: redis://enterprise-ai-redis:6379/0
+            - name: PINECONE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-ai-secrets
+                  key: pinecone-api-key
+            - name: PINECONE_ENVIRONMENT
+              value: "us-west-2"
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-ai-secrets
+                  key: anthropic-api-key
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-ai-secrets
+                  key: jwt-secret-key
+            - name: LANGSMITH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: enterprise-ai-secrets
+                  key: langsmith-api-key
+            - name: ENVIRONMENT
+              value: "production"
+            - name: LOG_LEVEL
+              value: "INFO"
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+
+      volumes:
+        - name: logs
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: enterprise-ai-backend
+  labels:
+    app: enterprise-ai-backend
+spec:
+  selector:
+    app: enterprise-ai-backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: enterprise-ai-backend-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: enterprise-ai-backend
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

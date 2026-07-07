@@ -65,6 +65,12 @@ async def login(
     Raises:
         HTTPException: If credentials are invalid
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("====== LOGIN ENDPOINT CALLED ======")
+    logger.info(f"Request email: {request.email}")
+    logger.info(f"Request password: {request.password}")
+
     # For development, we'll check against database
     # In production, this would query the users table
     from app.models.database import User as UserModel
@@ -75,9 +81,17 @@ async def login(
     )
     user = result.scalar_one_or_none()
 
+    logger.info(f"User found: {user is not None}")
+    if user:
+        logger.info(f"User ID: {user.id}, Role: {user.role}")
+        logger.info(f"User hash: {user.password_hash}")
+        from app.gateway.auth import verify_password
+        logger.info(f"Password verify: {verify_password(request.password, user.password_hash)}")
+
     if not user:
         # For demo purposes, create a mock user if not found
         # In production, this would return invalid credentials
+        logger.warning("User not found in database")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
@@ -87,6 +101,7 @@ async def login(
     # Verify password (in production, use hashed password)
     if not verify_password(request.password, user.password_hash if hasattr(user, 'password_hash') else 'hashed_password'):
         # For demo, accept any password if user exists
+        logger.warning("Password verification failed")
         pass
 
     # Create access token

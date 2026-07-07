@@ -1,0 +1,55 @@
+# Backend requirements for Enterprise AI Customer Support Assistant
+
+# FastAPI
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# Database
+sqlalchemy>=2.0.25
+asyncpg>=0.29.0
+psycopg2-binary>=2.9.9
+
+# Redis
+redis>=5.0.1
+
+# Authentication
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.6
+
+# Pinecone
+pinecone>=3.0.0
+
+# Groq (LLM API)
+groq>=0.37.0
+
+# LangChain/LangGraph
+langchain>=0.1.0
+langgraph>=0.1.0
+langsmith>=0.1.0
+
+# Data processing
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
+
+# Utilities
+tenacity>=8.2.0
+python-dateutil>=2.8.2
+orjson>=3.9.0
+
+# Security
+cryptography>=41.0.0
+
+# Monitoring
+prometheus-client>=0.19.0
+
+# Type hints
+typing-extensions>=4.9.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
+httpx>=0.25.0
+aiofiles>=23.2.0

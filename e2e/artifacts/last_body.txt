@@ -1,0 +1,39 @@
+Enterprise AI Customer Support
+Metrics
+Metrics
+
+Tokens
+
+0
+
+In: 0
+Out: 0
+
+Estimated Cost
+
+$0.0000
+support_engineer token limit: 8000
+
+Quality Status
+
+Drift detected - using fallback model
+
+Current Model
+
+llama-3.1-8b-instant
+
+Your Role
+Support Engineer
+SUPPORT ENGINEER
+
+What are your support hours?
+
+5:24:49 PM
+
+I apologize, but an error occurred while processing your request. Please try again.
+
+Model: llama-3.1-8b-instant
+5:24:51 PM
+​
+Press Enter to send
+Shift + Enter for new line

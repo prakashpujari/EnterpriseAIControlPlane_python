@@ -10,14 +10,27 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 import logging
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.settings import settings
 from app.models.database import User, UserRole
+from app.config.database import get_db_session
 
 logger = logging.getLogger(__name__)
 
-# OAuth2 scheme
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+# OAuth2 scheme. auto_error=False so a missing token surfaces as a 401 from
+# our own logic (and so DISABLE_AUTH can short-circuit before any 403).
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
+
+# Built-in dev user used when AUTH is disabled for local development.
+DEV_USER = User(
+    id="dev-user",
+    email="dev@example.com",
+    full_name="Dev User",
+    role="support_engineer",
+    department="Development",
+    is_active=True,
+)
 
 # Password hashing
 pwd_context = CryptContext(schemes=["sha256_crypt", "bcrypt"], deprecated="auto")
@@ -91,7 +104,7 @@ def decode_token(token: str) -> Dict[str, Any]:
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db_session = None,
+    db_session: AsyncSession = Depends(get_db_session),
 ) -> User:
     """
     Get the current authenticated user from JWT token.
@@ -112,6 +125,16 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    # Dev-only auth bypass: return a built-in user so the app is usable
+    # locally without a login flow. Gated behind the DISABLE_AUTH setting,
+    # which must never be enabled in production.
+    if settings.DISABLE_AUTH:
+        logger.warning("Auth disabled (DISABLE_AUTH=true) - returning dev user")
+        return DEV_USER
+
+    if not token:
+        raise credentials_exception
+
     try:
         payload = decode_token(token)
         user_id: str = payload.get("sub")
@@ -125,17 +148,13 @@ async def get_current_user(
         raise credentials_exception
 
     # Fetch user from database
-    if db_session is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database session not available",
-        )
+    from app.models.database import User as UserModel
+    from sqlalchemy import select
 
     result = await db_session.execute(
-        "SELECT * FROM users WHERE id = :id",
-        {"id": user_id}
+        select(UserModel).where(UserModel.id == user_id)
     )
-    user_row = result.fetchone()
+    user_row = result.scalar_one_or_none()
 
     if user_row is None:
         raise credentials_exception

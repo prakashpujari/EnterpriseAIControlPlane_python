@@ -4,9 +4,9 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import axios, { AxiosError } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import { useMetrics } from './useMetrics';
 
 interface Message {
   id: string;
@@ -14,6 +14,7 @@ interface Message {
   content: string;
   sources?: Array<{ title: string; source: string }>;
   timestamp: Date;
+  model_used?: string;
 }
 
 interface ChatResponse {
@@ -48,7 +49,7 @@ export function useChat(role: string, sessionId: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const queryClient = useQueryClient();
+  const { updateMetrics } = useMetrics();
 
   // Load messages for session (would fetch from API in full implementation)
   useEffect(() => {
@@ -84,12 +85,19 @@ export function useChat(role: string, sessionId: string) {
           content: response.data.response,
           sources: response.data.sources,
           timestamp: new Date(),
+          model_used: response.data.model_used,
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
 
-        // Invalidate metrics query
-        queryClient.invalidateQueries({ queryKey: ['metrics'] });
+        // Push real per-response metrics into the shared metrics store.
+        updateMetrics({
+          model_used: response.data.model_used,
+          tokens_input: response.data.tokens_input,
+          tokens_output: response.data.tokens_output,
+          latency_ms: response.data.latency_ms,
+          is_valid: response.data.is_valid,
+        });
 
       } catch (err) {
         const errorMessage =
@@ -103,7 +111,7 @@ export function useChat(role: string, sessionId: string) {
         setIsLoading(false);
       }
     },
-    [role, sessionId, isLoading, queryClient]
+    [role, sessionId, isLoading]
   );
 
   const clearMessages = useCallback(() => {

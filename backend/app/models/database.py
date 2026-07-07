@@ -17,6 +17,7 @@ from sqlalchemy import (
     Table,
     func,
     Index,
+    TypeDecorator,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
@@ -25,6 +26,17 @@ from datetime import datetime
 from enum import Enum as PyEnum
 
 from app.config.database import Base
+
+
+class JSONBType(TypeDecorator):
+    """JSONB type that works with both PostgreSQL and SQLite."""
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(JSONB())
+        return dialect.type_descriptor(JSON())
 
 
 class UserRole(PyEnum):
@@ -137,7 +149,7 @@ class ConversationTurn(Base):
     content = Column(Text, nullable=False)
     tokens_used = Column(Integer)
     model_used = Column(String(100))
-    doc_metadata = Column(JSONB)
+    doc_metadata = Column(JSONBType)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Indexes
@@ -162,10 +174,10 @@ class ConversationSummary(Base):
     session_id = Column(String(36), ForeignKey("conversation_sessions.id"), nullable=False)
     turn_range_start = Column(Integer, nullable=False)
     turn_range_end = Column(Integer, nullable=False)
-    user_goals = Column(JSONB)  # List of strings
-    decisions_made = Column(JSONB)  # List of dicts
-    key_facts = Column(JSONB)  # Dict of fact -> value
-    constraints = Column(JSONB)  # Dict of constraint -> value
+    user_goals = Column(JSONBType)  # List of strings
+    decisions_made = Column(JSONBType)  # List of dicts
+    key_facts = Column(JSONBType)  # Dict of fact -> value
+    constraints = Column(JSONBType)  # Dict of constraint -> value
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
@@ -185,8 +197,8 @@ class Role(Base):
     description = Column(Text)
     token_limit = Column(Integer, default=8000)
     max_tokens_per_request = Column(Integer, default=4000)
-    allowed_models = Column(JSONB)  # List of model names
-    allowed_tools = Column(JSONB)  # List of tool names
+    allowed_models = Column(JSONBType)  # List of model names
+    allowed_tools = Column(JSONBType)  # List of tool names
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     def __repr__(self):
@@ -219,8 +231,8 @@ class AuditLog(Base):
     action = Column(String(100), nullable=False)
     resource_type = Column(String(50))
     resource_id = Column(String(255))
-    request_data = Column(JSONB)
-    response_data = Column(JSONB)
+    request_data = Column(JSONBType)
+    response_data = Column(JSONBType)
     model_used = Column(String(100))
     tokens_input = Column(Integer)
     tokens_output = Column(Integer)
@@ -303,8 +315,8 @@ class Document(Base):
     source_url = Column(Text)
     s3_key = Column(String(500))
     namespace = Column(String(100))
-    role_restriction = Column(JSONB)  # List of roles
-    doc_metadata = Column(JSONB)
+    role_restriction = Column(JSONBType)  # List of roles
+    doc_metadata = Column(JSONBType)
     is_active = Column(Boolean, default=True)
     created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -334,7 +346,7 @@ class DocumentChunk(Base):
     document_id = Column(String(36), ForeignKey("documents.id"), nullable=False)
     chunk_index = Column(Integer, nullable=False)
     content = Column(Text, nullable=False)
-    embedding = Column(JSONB)  # Embedding vector stored as JSON array
+    embedding = Column(JSONBType)  # Embedding vector stored as JSON array
     token_count = Column(Integer)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
