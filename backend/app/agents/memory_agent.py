@@ -67,35 +67,67 @@ class MemoryAgent:
         # Update LTM with facts
         facts_added = 0
         for fact in extracted.get("facts", []):
+            if isinstance(fact, dict):
+                key = fact.get("key")
+                value = fact.get("value")
+                confidence = fact.get("confidence", 0.8)
+            else:
+                # fact is a string
+                key = str(fact)
+                value = str(fact)
+                confidence = 0.8
+            if key is None or value is None:
+                # skip if missing
+                continue
             await self.ltm.store_fact(
                 user_id=user_id,
-                fact_key=fact["key"],
-                fact_value=fact["value"],
-                metadata={"source": "conversation", "confidence": fact.get("confidence", 0.8)},
+                fact_key=key,
+                fact_value=value,
+                metadata={"source": "conversation", "confidence": confidence},
             )
             facts_added += 1
 
         # Update LTM with preferences
         preferences_added = 0
         for pref in extracted.get("preferences", []):
+            if isinstance(pref, dict):
+                key = pref.get("key")
+                value = pref.get("value")
+                ptype = pref.get("type", "string")
+            else:
+                key = str(pref)
+                value = str(pref)
+                ptype = "string"
+            if key is None or value is None:
+                continue
             await self.ltm.store_preference(
                 user_id=user_id,
-                preference_key=pref["key"],
-                preference_value=pref["value"],
-                metadata={"type": pref.get("type", "string")},
+                preference_key=key,
+                preference_value=value,
+                metadata={"type": ptype},
             )
             preferences_added += 1
 
         # Record decisions
         decisions_recorded = 0
         for decision in extracted.get("decisions", []):
-            # Store decision in LTM
+            if isinstance(decision, dict):
+                description = decision.get("description")
+                outcome = decision.get("outcome", "")
+                timestamp = decision.get("timestamp")
+            else:
+                description = str(decision)
+                outcome = ""
+                timestamp = None
+            if description is None:
+                continue
+            fact_key = f"decision_{timestamp}" if timestamp is not None else f"decision_{hash(description)}"
             await self.ltm.store_fact(
                 user_id=user_id,
-                fact_key=f"decision_{int(decision.get('timestamp', 0))}",
-                fact_value=decision["description"],
+                fact_key=fact_key,
+                fact_value=description,
                 metadata={
-                    "outcome": decision.get("outcome", ""),
+                    "outcome": outcome,
                     "source": "decision",
                 },
             )
@@ -132,19 +164,26 @@ class MemoryAgent:
         ])
 
         prompt = f"""
-        Extract structured information from this conversation:
+        Extract ONLY concrete, verifiable information from the conversation.
+        Return a JSON object with three arrays: facts, preferences, decisions.
+
+        Each fact should be an object with "key" (a short identifier) and "value" (the fact text).
+        Each preference should be an object with "key" and "value".
+        Each decision should be an object with "description" and optionally "outcome".
+
+        Example:
+        {
+          "facts": [{"key": "customer_name", "value": "John Doe"}],
+          "preferences": [{"key": "contact_method", "value": "email"}],
+          "decisions": [{"description": "Escalate to supervisor", "outcome": "pending"}]
+        }
+
+        If no information is found, return empty arrays.
 
         Conversation:
         {conversation_text}
 
         Role: {role}
-
-        Extract ONLY concrete, verifiable information:
-        - facts: Key facts mentioned (customer needs, issues, preferences)
-        - preferences: User preferences or stated needs
-        - decisions: Decisions made during conversation
-
-        Return JSON with these three lists. Empty lists if nothing found.
         """
 
         try:

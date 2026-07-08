@@ -177,7 +177,7 @@ class ChatWorkflow:
             )
 
         except Exception as e:
-            logger.error(f"Workflow error: {e}")
+            logger.error(f"Workflow error: {e}", exc_info=True)
 
             if self.audit_logger:
                 await self.audit_logger.log_action(
@@ -365,6 +365,10 @@ class ChatWorkflow:
                 max_tokens=600,
                 temperature=0.4,
             )
+            # Safely extract text
+            if not isinstance(response, dict) or "content" not in response or not response["content"]:
+                logger.error(f"Unexpected response structure from client.generate: {response}")
+                return "I'm sorry, I couldn't generate a response due to unexpected format. Please try again."
             answer = response["content"][0].text.strip()
             return answer or (
                 "I'm sorry, I couldn't generate a response. Please try again."

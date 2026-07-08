@@ -5,8 +5,11 @@ Documents API router for RAG document management.
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import logging
+import io
+import PyPDF2
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
@@ -102,7 +105,7 @@ async def list_documents(
         List of documents
     """
     result = await db_session.execute(
-        "SELECT id, title, content_type, source, created_at, is_active FROM documents ORDER BY created_at DESC LIMIT :limit OFFSET :skip",
+        text("SELECT id, title, content_type, source_url AS source, created_at, is_active FROM documents ORDER BY created_at DESC LIMIT :limit OFFSET :skip"),
         {"limit": limit, "skip": skip},
     )
 
@@ -138,7 +141,7 @@ async def get_document(
         Document info
     """
     result = await db_session.execute(
-        "SELECT id, title, content_type, source, created_at, is_active FROM documents WHERE id = :id",
+        text("SELECT id, title, content_type, source_url AS source, created_at, is_active FROM documents WHERE id = :id"),
         {"id": document_id},
     )
 
@@ -205,13 +208,35 @@ async def upload_document(
 
     # Determine content type
     content_type = file.content_type or "application/octet-stream"
+    filename = file.filename or "uploaded_document"
+
+    # Extract text based on file type
+    extracted_text = ""
+    if content_type == "application/pdf" or filename.lower().endswith('.pdf'):
+        # Extract text from PDF
+        try:
+            pdf_file = io.BytesIO(content)
+            pdf_reader = PyPDF2.PdfReader(pdf_file)
+            text_pages = []
+            for page in pdf_reader.pages:
+                text_page = page.extract_text()
+                if text_page:  # Only add non-empty text
+                    text_pages.append(text_page)
+            extracted_text = "\n".join(text_pages)
+        except Exception as e:
+            logger.error(f"Failed to extract text from PDF: {e}")
+            # Fallback to raw content decode if PDF extraction fails
+            extracted_text = content.decode("utf-8", errors="ignore")
+    else:
+        # For other file types, decode as UTF-8 text
+        extracted_text = content.decode("utf-8", errors="ignore")
 
     # Create document
     doc = Document(
-        title=title or file.filename or "Uploaded Document",
-        content=content.decode("utf-8", errors="ignore"),
+        title=title or filename or "Uploaded Document",
+        content=extracted_text,
         content_type=content_type,
-        source=f"upload:{file.filename}",
+        source=f"upload:{filename}",
     )
 
     ingestor = get_ingestor(db_session)

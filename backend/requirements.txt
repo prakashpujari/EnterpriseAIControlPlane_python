@@ -33,6 +33,9 @@ pydantic>=2.5.0
 pydantic-settings>=2.1.0
 python-dotenv>=1.0.0
 
+# PDF text extraction
+PyPDF2>=3.0.0
+
 # Utilities
 tenacity>=8.2.0
 python-dateutil>=2.8.2

@@ -67,12 +67,17 @@ class ReasoningAgent:
         model_config = model_router.get_model_config("large")
 
         # Retrieve relevant documents for context
-        rag_context, citations = await self.rag_engine.query(
-            query=query,
-            role=role,
-            top_k=10,
-            final_k=5,
-        )
+        try:
+            rag_context, citations = await self.rag_engine.query(
+                query=query,
+                role=role,
+                top_k=10,
+                final_k=5,
+            )
+        except Exception as e:
+            logger.error(f"RAG retrieval failed in reasoning agent: {e}")
+            rag_context = ""
+            citations = []
 
         # Build reasoning prompt
         prompt = self._build_reasoning_prompt(

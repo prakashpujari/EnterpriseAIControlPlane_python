@@ -10,7 +10,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 import logging
 
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.settings import settings
@@ -18,13 +18,14 @@ from app.config.pinecone_client import get_rag_index, NAMESPACES
 from app.config.llm_providers import get_claude_client
 from app.memory.ltm import LTMManager
 from .chunker import DocumentChunker, MetadataExtractor
+from app.models.database import Document as DBDocument  # SQLAlchemy model
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class Document:
-    """Document to be ingested."""
+    """Document to be ingested (input to the ingestion pipeline)."""
 
     title: str
     content: str
@@ -142,7 +143,7 @@ class DocumentIngestor:
 
         document_id = str(uuid.uuid4())
 
-        stmt = insert("documents").values(
+        stmt = insert(DBDocument).values(
             id=document_id,
             title=document.title,
             content=document.content[:10000] if len(document.content) > 10000 else document.content,
@@ -151,7 +152,7 @@ class DocumentIngestor:
             s3_key=document.s3_key,
             namespace=NAMESPACES["rag"]["global"],
             role_restriction=document.role_restriction or ["global"],
-            metadata=document.metadata,
+            doc_metadata=document.metadata,
             is_active=True,
             created_by=user_id,
             created_at=datetime.utcnow(),
@@ -195,7 +196,7 @@ class DocumentIngestor:
                     "document_id": document_id,
                     "chunk_index": i,
                     "title": chunk.title or "Document",
-                    "content": chunk.content[:1000],  # Truncate for metadata
+                    "content": chunk.content[:1000],  # Trim for metadata
                     "source": chunk.metadata.get("source", "Unknown"),
                     "role_restriction": chunk.metadata.get("role_restriction", ["global"]),
                     "content_type": chunk.metadata.get("content_type", "text"),
@@ -225,7 +226,8 @@ class DocumentIngestor:
         for i in range(0, len(texts), batch_size):
             batch = texts[i:i + batch_size]
             batch_embeddings = await self.client.embed(batch)
-            embeddings.extend(batch_embeddings)
+            extend = list.extend
+            extend(embeddings, batch_embeddings)
 
         return embeddings
 
@@ -250,12 +252,12 @@ class DocumentIngestor:
             # Delete from database
             if self.db:
                 await self.db.execute(
-                    "DELETE FROM document_chunks WHERE document_id = :id",
-                    {"id": document_id}
+                    text("DELETE FROM document_chunks WHERE document_id = :id"),
+                    {"id": document_id},
                 )
                 await self.db.execute(
-                    "DELETE FROM documents WHERE id = :id",
-                    {"id": document_id}
+                    text("DELETE FROM documents WHERE id = :id"),
+                    {"id": document_id},
                 )
                 await self.db.commit()
 
@@ -265,45 +267,6 @@ class DocumentIngestor:
         except Exception as e:
             logger.error(f"Failed to delete document: {e}")
             return False
-
-
-class BulkIngestor:
-    """
-    Handles bulk document ingestion from S3.
-    """
-
-    def __init__(self, db_session: Optional[AsyncSession] = None):
-        self.ingestor = DocumentIngestor(db_session)
-
-    async def ingest_from_s3(
-        self,
-        s3_prefix: str,
-        bucket: str,
-        role: str,
-        user_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """
-        Ingest documents from S3 bucket.
-
-        Args:
-            s3_prefix: S3 key prefix
-            bucket: S3 bucket name
-            role: Document role
-            user_id: User ID
-
-        Returns:
-            Ingestion summary
-        """
-        # This would integrate with boto3 for S3 access
-        # For now, return placeholder
-        logger.info(f"Would ingest from s3://{bucket}/{s3_prefix} for role {role}")
-
-        return {
-            "status": "not_implemented",
-            "bucket": bucket,
-            "prefix": s3_prefix,
-            "role": role,
-        }
 
 
 # Global ingestor instance

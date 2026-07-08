@@ -48,19 +48,24 @@ class RAGAgent:
         Args:
             query: User question
             role: User role
-            context: Conversation context
+            context: Optional conversation context
             top_k: Number of documents to retrieve
 
         Returns:
             RAGResult with answer and sources
         """
         # Retrieve relevant documents
-        context_text, citations = await self.rag_engine.query(
-            query=query,
-            role=role,
-            top_k=top_k,
-            final_k=5,
-        )
+        try:
+            context_text, citations = await self.rag_engine.query(
+                query=query,
+                role=role,
+                top_k=top_k,
+                final_k=5,
+            )
+        except Exception as e:
+            logger.error(f"RAG retrieval failed: {e}")
+            context_text = ""
+            citations = []
 
         # Generate answer with grounding
         answer = await self._generate_grounded_answer(
@@ -129,7 +134,15 @@ class RAGAgent:
                 max_tokens=model_config["max_tokens"],
                 temperature=0.3,
             )
-
+            # Safely extract text
+            if not isinstance(response, dict) or "content" not in response or not response["content"]:
+                logger.error(f"Unexpected response structure from client.generate: {response}")
+                return {
+                    "answer": "I apologize, but I'm unable to retrieve information due to unexpected format.",
+                    "sources": [],
+                    "confidence": 0.0,
+                    "grounding_score": 0.0,
+                }
             answer_text = response["content"][0].text
             usage = response.get("usage", {})
 
