@@ -1,0 +1,1 @@
+This should contain a screenshot of the login screen showing email/password fields and sign in button

@@ -1,0 +1,1 @@
+This should contain a screenshot of the main chat interface with header, role selector, chat window, and input area
