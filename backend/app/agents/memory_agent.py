@@ -133,6 +133,10 @@ class MemoryAgent:
             )
             decisions_recorded += 1
 
+        # Update STM with conversation turns
+        if self.stm:
+            await self.stm.add_conversation_turns(conversation_turns)
+
         logger.info(f"Memory updated: {facts_added} facts, {preferences_added} prefs, {decisions_recorded} decisions")
 
         return MemoryUpdateResult(
@@ -172,11 +176,11 @@ class MemoryAgent:
         Each decision should be an object with "description" and optionally "outcome".
 
         Example:
-        {
-          "facts": [{"key": "customer_name", "value": "John Doe"}],
-          "preferences": [{"key": "contact_method", "value": "email"}],
-          "decisions": [{"description": "Escalate to supervisor", "outcome": "pending"}]
-        }
+        {{
+          "facts": [{{"key": "customer_name", "value": "John Doe"}}],
+          "preferences": [{{"key": "contact_method", "value": "email"}}],
+          "decisions": [{{"description": "Escalate to supervisor", "outcome": "pending"}}]
+        }}
 
         If no information is found, return empty arrays.
 
@@ -223,6 +227,8 @@ class MemoryAgent:
         top_k: int = 5,
     ) -> List[Dict[str, Any]]:
         """
+        Search user's memory for relevant information.
+
         Search user's memory for relevant information.
 
         Args:

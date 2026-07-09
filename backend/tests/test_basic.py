@@ -14,10 +14,10 @@ def test_settings():
     assert settings.APP_VERSION == "1.0.0"
     assert settings.ENVIRONMENT == "development"
 
-    # Check Groq models
-    assert "llama-3.1-8b-instruct" in settings.SMALL_MODEL
-    assert "llama-3.1-70b-sonnet" in settings.MEDIUM_MODEL
-    assert "mixtral-8x7b-32b" in settings.LARGE_MODEL
+    # Check Groq models (from .env)
+    assert "llama-3.1-8b-instant" in settings.SMALL_MODEL
+    assert "llama-3.3-70b-versatile" in settings.MEDIUM_MODEL
+    assert "llama-3.3-70b-versatile" in settings.LARGE_MODEL
 
 
 def test_role_types():

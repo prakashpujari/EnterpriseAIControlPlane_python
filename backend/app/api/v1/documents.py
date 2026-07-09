@@ -223,13 +223,25 @@ async def upload_document(
                 if text_page:  # Only add non-empty text
                     text_pages.append(text_page)
             extracted_text = "\n".join(text_pages)
+            # Check if we got meaningful text
+            if not extracted_text.strip():
+                raise ValueError("PDF text extraction resulted in empty content")
         except Exception as e:
             logger.error(f"Failed to extract text from PDF: {e}")
-            # Fallback to raw content decode if PDF extraction fails
-            extracted_text = content.decode("utf-8", errors="ignore")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to extract text from PDF: {str(e)}. Please ensure the PDF contains extractable text or try a different format."
+            )
     else:
         # For other file types, decode as UTF-8 text
-        extracted_text = content.decode("utf-8", errors="ignore")
+        try:
+            extracted_text = content.decode("utf-8", errors="ignore")
+        except Exception as e:
+            logger.error(f"Failed to decode file content: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to decode file content: {str(e)}"
+            )
 
     # Create document
     doc = Document(

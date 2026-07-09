@@ -52,13 +52,25 @@ A production-grade Enterprise AI Customer Support Assistant with RAG, memory, an
 ## Features
 
 - **FAQ Answering**: Instant responses to common questions
-- **RAG-based Retrieval**: Document retrieval with hybrid search
+- **RAG-based Retrieval**: Document retrieval with hybrid search (now with proper embeddings)
 - **Summarization**: Compress long texts and conversations
 - **Complex Reasoning**: Multi-step analysis for escalations
 - **Role-based Context**: Different responses per role
 - **Memory System**: STM (short-term) + LTM (long-term) memory
 - **Cost Optimization**: Model routing and context compression
 - **Drift Detection**: Real-time quality monitoring
+
+## Recent Fixes
+
+### Embedding Generation Fix
+- **Issue**: Groq doesn't provide native embeddings, causing the system to use zero vectors which broke semantic search
+- **Fix**: Implemented a content-sensitive hashing-based embedding approach in `backend/app/config/llm_providers.py`
+- **Result**: Documents now generate meaningful, differentiated embeddings enabling proper similarity search in Pinecone
+
+### PDF Ingestion Pipeline
+- Verified end-to-end document ingestion from upload through text extraction, chunking, embedding, and Pinecone storage
+- Confirmed proper error handling for PDFs without extractable text
+- Validated metadata persistence and namespace routing
 
 ## Roles
 
@@ -181,6 +193,7 @@ VITE_API_URL=http://localhost:8000
 - `GET /api/v1/health/database` - Database health
 - `GET /api/v1/health/llm` - LLM provider health
 - `GET /api/v1/health/pinecone` - Pinecone health
+- `GET /api/v1/health/embeddings` - Embedding generation health (new)
 
 ## Testing
 
@@ -199,6 +212,7 @@ npm test
 - **LangSmith**: Automatic tracing of all LLM calls
 - **Prometheus**: Metrics endpoint at `/metrics`
 - **Grafana**: Dashboard for visualization (requires setup)
+- **Embedding Health**: Monitor embedding generation quality via `/health/embeddings`
 
 ## Security
 

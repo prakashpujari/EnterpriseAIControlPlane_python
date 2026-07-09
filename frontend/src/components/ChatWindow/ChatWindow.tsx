@@ -56,6 +56,22 @@ export function ChatWindow({ role, sessionId }: ChatWindowProps) {
     inputRef.current?.focus();
   }, []);
 
+  // Listen for sample query events from Home page
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      if (customEvent.type === 'sample-query') {
+        setInputValue(customEvent.detail);
+        // Focus input after setting value
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener('sample-query', handler);
+    return () => {
+      window.removeEventListener('sample-query', handler);
+    };
+  }, []);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;

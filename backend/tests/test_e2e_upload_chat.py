@@ -3,15 +3,14 @@ End-to-end test for document upload and chat retrieval.
 """
 
 import os
+import sys
 import tempfile
 import pytest
 from fastapi.testclient import TestClient
 
-# Change working directory to repository root so that relative paths in .env work correctly
-# (the .env file expects to be run from root, where test.db resides)
-os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add the backend directory to sys.path so that the app package can be imported
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend"))
 
-# Now import the app (this will load .env from the current directory, which is repo root)
 from app.main import app
 from app.config import settings
 

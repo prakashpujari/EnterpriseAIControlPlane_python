@@ -166,7 +166,7 @@ class ChatWorkflow:
 
             return ChatResponse(
                 response=result["response"],
-                session_id=result["session_id"],
+                session_id=result["session_id"] or str(uuid.uuid4()),
                 sources=result["sources"],
                 model_used=result["model_used"],
                 tokens_input=result["tokens_input"],
@@ -289,11 +289,15 @@ class ChatWorkflow:
         # the user as a blank message. Fall back to a direct LLM answer.
         if not state["response"] or not state["response"].strip():
             logger.info("Worker returned empty response; using direct LLM fallback")
-            state["response"] = await self._generate_fallback_response(
+            fallback_result = await self._generate_fallback_response(
                 query=state["query"],
                 role=state["role"],
                 context=state.get("context"),
             )
+            state["response"] = fallback_result["answer"]
+            state["sources"] = fallback_result["sources"]
+            state["tokens_input"] = fallback_result["tokens_input"]
+            state["tokens_output"] = fallback_result["tokens_output"]
             state["model_used"] = model_router.get_model_config("small")["model"]
 
         # Step 3: Critic validation
@@ -328,7 +332,7 @@ class ChatWorkflow:
         query: str,
         role: str,
         context: Optional[Dict[str, Any]] = None,
-    ) -> str:
+    ) -> Dict[str, Any]:
         """
         Generate a direct LLM answer when no worker agent produced one.
 
@@ -341,7 +345,7 @@ class ChatWorkflow:
             context: Optional conversation context
 
         Returns:
-            Response text (never empty unless generation itself fails)
+            Dict with answer, sources, tokens_input, tokens_output
         """
         context_str = ""
         if context:
@@ -365,17 +369,36 @@ class ChatWorkflow:
                 max_tokens=600,
                 temperature=0.4,
             )
-            # Safely extract text
+            # Safely extract text and usage
             if not isinstance(response, dict) or "content" not in response or not response["content"]:
                 logger.error(f"Unexpected response structure from client.generate: {response}")
-                return "I'm sorry, I couldn't generate a response due to unexpected format. Please try again."
+                return {
+                    "answer": "I'm sorry, I couldn't generate a response due to unexpected format. Please try again.",
+                    "sources": [],
+                    "tokens_input": 0,
+                    "tokens_output": 0,
+                }
             answer = response["content"][0].text.strip()
-            return answer or (
-                "I'm sorry, I couldn't generate a response. Please try again."
-            )
+            # Extract token usage if available
+            usage = response.get("usage", {})
+            tokens_input = usage.get("input_tokens", 0)
+            tokens_output = usage.get("output_tokens", 0)
+            if not answer:
+                answer = "I'm sorry, I couldn't generate a response. Please try again."
+            return {
+                "answer": answer,
+                "sources": [],
+                "tokens_input": tokens_input,
+                "tokens_output": tokens_output,
+            }
         except Exception as e:
             logger.error(f"Fallback response generation failed: {e}")
-            return "I'm sorry, I'm having trouble responding right now. Please try again in a moment."
+            return {
+                "answer": "I'm sorry, I'm having trouble responding right now. Please try again in a moment.",
+                "sources": [],
+                "tokens_input": 0,
+                "tokens_output": 0,
+            }
 
 
 # Create LangGraph state graph for visualization
