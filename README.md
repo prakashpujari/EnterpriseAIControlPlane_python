@@ -4,6 +4,8 @@ A production-grade Enterprise AI Customer Support Assistant with RAG, memory, an
 
 ## Architecture Overview
 
+<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/14138a15-54a9-4e96-a5df-cfa9e2701fbd" />
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        CLIENT LAYER                              │
