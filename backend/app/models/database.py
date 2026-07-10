@@ -100,6 +100,10 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_login = Column(DateTime(timezone=True), nullable=True)
+    # User settings
+    notification_preference = Column(Boolean, default=True)
+    dark_mode = Column(Boolean, default=False)
+    api_access = Column(Boolean, default=False)
 
     # Relationships
     sessions = relationship("ConversationSession", back_populates="user")

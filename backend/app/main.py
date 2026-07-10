@@ -95,6 +95,9 @@ async def shutdown_event():
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler."""
+    if isinstance(exc, HTTPException):
+        # Let FastAPI handle HTTPException normally
+        raise exc
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
 
     return JSONResponse(
@@ -142,12 +145,14 @@ async def root():
 
 # Include routers
 from app.api.v1 import chat, documents, memory, health, auth
+from app.api.v1 import settings as settings_router
 
 app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
 app.include_router(documents.router, prefix="/api/v1", tags=["documents"])
 app.include_router(memory.router, prefix="/api/v1", tags=["memory"])
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
+app.include_router(settings_router.router, prefix="/api/v1", tags=["settings"])
 
 
 if __name__ == "__main__":
