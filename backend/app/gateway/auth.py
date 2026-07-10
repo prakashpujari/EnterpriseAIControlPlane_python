@@ -30,6 +30,9 @@ DEV_USER = User(
     role="support_engineer",
     department="Development",
     is_active=True,
+    notification_preference=True,
+    dark_mode=False,
+    api_access=False,
 )
 
 # Password hashing
