@@ -4,7 +4,7 @@ Stores recent conversation turns in PostgreSQL and compresses older turns into s
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy import select, insert, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,8 +57,8 @@ class STMManager:
             id=session_id,
             user_id=user_id,
             role=role,
-            title=title or f"Chat Session - {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}",
-            expires_at=datetime.utcnow() + timedelta(hours=24),
+            title=title or f"Chat Session - {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
         )
 
         await self.db.execute(stmt)

@@ -22,7 +22,9 @@ class MockPineconeIndex:
     async def upsert(self, vectors: List[Dict[str, Any]], namespace: str = "") -> None:
         """Mock upsert."""
         for vec in vectors:
-            self._vectors[vec["id"]] = vec
+            # Store with namespace prefix
+            key = f"{namespace}:{vec['id']}" if namespace else vec['id']
+            self._vectors[key] = vec
         logger.debug(f"Mock upsert: {len(vectors)} vectors to {self.name}/{namespace}")
 
     async def query(
@@ -33,8 +35,9 @@ class MockPineconeIndex:
         include_metadata: bool = True,
         filter: Optional[Dict[str, Any]] = None,
     ):
-        """Mock query - returns empty results."""
+        """Mock query - returns stored vectors with simple similarity."""
         from types import SimpleNamespace
+        import math
 
         class MockMatch:
             def __init__(self, id: str, score: float, metadata: Dict[str, Any]):
@@ -46,7 +49,44 @@ class MockPineconeIndex:
             def __init__(self, matches: List[MockMatch]):
                 self.matches = matches
 
-        return MockResult([])
+        # Filter vectors by namespace
+        namespace_prefix = f"{namespace}:" if namespace else ""
+        relevant_vectors = {
+            k: v for k, v in self._vectors.items()
+            if k.startswith(namespace_prefix)
+        }
+
+        if not relevant_vectors:
+            return MockResult([])
+
+        # Compute cosine similarity
+        def cosine_similarity(a, b):
+            dot = sum(x * y for x, y in zip(a, b))
+            norm_a = math.sqrt(sum(x * x for x in a))
+            norm_b = math.sqrt(sum(y * y for y in b))
+            if norm_a == 0 or norm_b == 0:
+                return 0.0
+            return dot / (norm_a * norm_b)
+
+        # Score all vectors
+        scored = []
+        for vec_id, vec_data in relevant_vectors.items():
+            score = cosine_similarity(vector, vec_data["values"])
+            scored.append((score, vec_data))
+
+        # Sort by score descending
+        scored.sort(key=lambda x: x[0], reverse=True)
+
+        # Return top_k
+        matches = []
+        for score, vec_data in scored[:top_k]:
+            matches.append(MockMatch(
+                id=vec_data["id"],
+                score=score,
+                metadata=vec_data.get("metadata", {})
+            ))
+
+        return MockResult(matches)
 
     async def delete(self, ids: List[str], namespace: str = "") -> None:
         """Mock delete."""

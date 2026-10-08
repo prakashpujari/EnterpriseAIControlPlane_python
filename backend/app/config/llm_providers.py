@@ -156,35 +156,50 @@ class GroqClient:
     async def embed(self, texts: list) -> list:
         """
         Generate embeddings for the given texts.
-        Uses a simple hashing-based approach to create meaningful embeddings
-        that preserve semantic similarity for basic use cases.
+        Uses a word-based approach that preserves semantic similarity
+        by creating embeddings based on word overlap.
         For production, consider integrating with a proper embedding service.
         """
+        import re
+        from collections import Counter
+
+        # Build vocabulary from all texts (for consistent dimensions)
+        all_words = set()
+        for text in texts:
+            words = re.findall(r'\b\w+\b', text.lower())
+            all_words.update(words)
+
+        # Create a fixed vocabulary (limit to 1536 words)
+        vocab = list(all_words)[:1536]
+        word_to_idx = {word: i for i, word in enumerate(vocab)}
+
         embeddings = []
         for text in texts:
-            # Create a deterministic but varied embedding based on text content
-            # This is better than zeros and provides basic differentiation
             if not text.strip():
-                # Empty text gets zero vector
                 embeddings.append([0.0] * 1536)
                 continue
 
-            # Create a hash of the text
-            hash_obj = hashlib.md5(text.encode('utf-8'))
-            hash_hex = hash_obj.hexdigest()
+            # Count word frequencies
+            words = re.findall(r'\b\w+\b', text.lower())
+            word_counts = Counter(words)
 
-            # Convert hash to a list of numbers
-            hash_ints = [int(hash_hex[i:i+2], 16) for i in range(0, len(hash_hex), 2)]
+            # Create TF vector
+            total_words = len(words)
+            if total_words == 0:
+                embeddings.append([0.0] * 1536)
+                continue
 
-            # Expand/repeat to reach 1536 dimensions
-            # Cycle through the hash values to fill the embedding vector
-            embedding = []
-            for i in range(1536):
-                # Use the hash values cyclically, normalized to [-1, 1]
-                val = hash_ints[i % len(hash_ints)]
-                # Normalize to [-1, 1] range
-                normalized = (val / 255.0) * 2 - 1
-                embedding.append(normalized)
+            embedding = [0.0] * 1536
+            for word, count in word_counts.items():
+                if word in word_to_idx:
+                    # TF-IDF like weighting (simple TF for now)
+                    tf = count / total_words
+                    embedding[word_to_idx[word]] = tf
+
+            # Normalize to unit vector
+            norm = sum(x * x for x in embedding) ** 0.5
+            if norm > 0:
+                embedding = [x / norm for x in embedding]
 
             embeddings.append(embedding)
 

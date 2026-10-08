@@ -5,7 +5,7 @@ Stores facts, preferences, and decisions in Pinecone for semantic retrieval.
 
 import uuid
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Tuple
 import logging
 
@@ -65,7 +65,7 @@ class LTMManager:
         fact_metadata = {
             "user_id": user_id,
             "fact_key": fact_key,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             **(metadata or {}),
         }
 
@@ -118,7 +118,7 @@ class LTMManager:
             "preference_key": preference_key,
             "preference_value": value_str,
             "type": type(preference_value).__name__,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             **(metadata or {}),
         }
 

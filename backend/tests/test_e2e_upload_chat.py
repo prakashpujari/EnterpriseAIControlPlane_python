@@ -49,10 +49,11 @@ def test_document_upload_and_chat():
         found = any(d.get("id") == doc_id for d in documents)
         assert found, f"Uploaded document {doc_id} not found in document list"
 
-        # 3. Create a chat session
+        # 3. Create a chat session (role is a query parameter)
         session_resp = client.post(
             "/api/v1/chat/session",
-            json={"role": "support_engineer", "title": "Test session"},
+            params={"role": "support_engineer"},
+            json={"title": "Test session"},
         )
         assert session_resp.status_code == 200, f"Create session failed: {session_resp.text}"
         session_data = session_resp.json()

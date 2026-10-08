@@ -3,7 +3,7 @@ Authentication module for FastAPI Gateway.
 Implements JWT/OAuth2 authentication with role-based claims.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
@@ -62,11 +62,11 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     """
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRATION_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_EXPIRATION_MINUTES)
 
-    to_encode.update({"exp": expire, "iat": datetime.utcnow()})
+    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc)})
 
     encoded_jwt = jwt.encode(
         to_encode,

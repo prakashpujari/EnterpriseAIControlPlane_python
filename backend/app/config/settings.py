@@ -6,7 +6,7 @@ Uses Pydantic for environment variable management and validation.
 import os
 from pathlib import Path
 from typing import List, Optional, Literal
-from pydantic import Field, field_validator, SecretStr
+from pydantic import Field, field_validator, SecretStr, ConfigDict
 from pydantic_settings import BaseSettings
 from enum import Enum
 
@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
 
     # Database
-    DATABASE_URL: str = Field(..., env="DATABASE_URL")
+    DATABASE_URL: str = Field(..., validation_alias="DATABASE_URL")
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
 
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     REDIS_RATE_LIMIT_TTL: int = 3600  # 1 hour
 
     # Pinecone
-    PINECONE_API_KEY: SecretStr = Field(..., env="PINECONE_API_KEY")
+    PINECONE_API_KEY: SecretStr = Field(..., validation_alias="PINECONE_API_KEY")
     PINECONE_ENVIRONMENT: str = Field(default="us-west-2")
     PINECONE_RAG_INDEX: str = Field(default="mortgageindex")
     PINECONE_LTM_INDEX: str = Field(default="mortgageindex")
@@ -64,13 +64,13 @@ class Settings(BaseSettings):
     MORTGAGE_API_KEY: Optional[SecretStr] = None
 
     # Groq API
-    GROQ_API_KEY: SecretStr = Field(..., env="GROQ_API_KEY")
+    GROQ_API_KEY: SecretStr = Field(..., validation_alias="GROQ_API_KEY")
     GROQ_BASE_URL: str = "https://api.groq.com"
 
     # Model Configuration (Groq models)
-    SMALL_MODEL: str = "llama-3.1-8b-instant"      # Fast, cheap for FAQ/compression
-    MEDIUM_MODEL: str = "llama-3.1-70b-versatile"      # Good balance for RAG/summarize
-    LARGE_MODEL: str = "mixtral-8x7b-32768"  # Complex reasoning
+    SMALL_MODEL: str = "openai/gpt-oss-20b"          # Fast, cheap for FAQ/compression
+    MEDIUM_MODEL: str = "qwen/qwen3.8-27b"           # Good balance for RAG/summarize
+    LARGE_MODEL: str = "openai/gpt-oss-120b"         # Complex reasoning
 
     # Token Limits per Role
     SUPPORT_ENGINEER_TOKEN_LIMIT: int = 8000
@@ -111,7 +111,7 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
     # Security
-    JWT_SECRET_KEY: SecretStr = Field(..., env="JWT_SECRET_KEY")
+    JWT_SECRET_KEY: SecretStr = Field(..., validation_alias="JWT_SECRET_KEY")
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_MINUTES: int = 60
 
@@ -129,10 +129,12 @@ class Settings(BaseSettings):
             raise ValueError(f"{info.field_name} is required")
         return v
 
-    class Config:
-        env_file = None  # Disable auto .env loading, we load manually via python-dotenv
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=None,  # Disable auto .env loading, we load manually via python-dotenv
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
 
 # Global settings instance

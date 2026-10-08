@@ -15,9 +15,9 @@ def test_settings():
     assert settings.ENVIRONMENT == "development"
 
     # Check Groq models (from .env)
-    assert "llama-3.1-8b-instant" in settings.SMALL_MODEL
-    assert "llama-3.3-70b-versatile" in settings.MEDIUM_MODEL
-    assert "llama-3.3-70b-versatile" in settings.LARGE_MODEL
+    assert "gpt-oss-20b" in settings.SMALL_MODEL
+    assert "qwen3.8-27b" in settings.MEDIUM_MODEL
+    assert "gpt-oss-120b" in settings.LARGE_MODEL
 
 
 def test_role_types():

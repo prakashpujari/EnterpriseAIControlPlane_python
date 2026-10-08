@@ -5,6 +5,7 @@ Enterprise AI Customer Support Assistant.
 
 import uuid
 import logging
+from contextlib import asynccontextmanager
 from typing import Dict, Any
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse
@@ -35,6 +36,31 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler for startup and shutdown."""
+    # Startup
+    logger.info("Starting Enterprise AI Customer Support Assistant...")
+
+    # Initialize database
+    await init_db()
+    logger.info("Database initialized")
+
+    # Initialize Pinecone indexes
+    await init_pinecone_indexes()
+    logger.info("Pinecone indexes initialized")
+
+    logger.info(f"Application started in {settings.ENVIRONMENT} mode")
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down...")
+    await close_db()
+    logger.info("Shutdown complete")
+
+
 # Create FastAPI app
 app = FastAPI(
     title=settings.APP_NAME,
@@ -43,6 +69,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
 # CORS middleware
@@ -66,30 +93,6 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     logger.info(f"Response: {response.status_code}")
     return response
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize services on startup."""
-    logger.info("Starting Enterprise AI Customer Support Assistant...")
-
-    # Initialize database
-    await init_db()
-    logger.info("Database initialized")
-
-    # Initialize Pinecone indexes
-    await init_pinecone_indexes()
-    logger.info("Pinecone indexes initialized")
-
-    logger.info(f"Application started in {settings.ENVIRONMENT} mode")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown."""
-    logger.info("Shutting down...")
-    await close_db()
-    logger.info("Shutdown complete")
 
 
 @app.exception_handler(Exception)

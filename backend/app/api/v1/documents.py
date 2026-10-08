@@ -3,10 +3,10 @@ Documents API router for RAG document management.
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import io
-import PyPDF2
+import pypdf
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy import text
@@ -80,7 +80,7 @@ async def create_document(
         title=document.title,
         content_type=document.content_type,
         source=document.source,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         is_active=result.status == "success",
     )
 
@@ -216,7 +216,7 @@ async def upload_document(
         # Extract text from PDF
         try:
             pdf_file = io.BytesIO(content)
-            pdf_reader = PyPDF2.PdfReader(pdf_file)
+            pdf_reader = pypdf.PdfReader(pdf_file)
             text_pages = []
             for page in pdf_reader.pages:
                 text_page = page.extract_text()

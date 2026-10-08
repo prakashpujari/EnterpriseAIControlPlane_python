@@ -5,7 +5,7 @@ Logs all user actions, model interactions, and system events.
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 from enum import Enum
 import logging
@@ -84,7 +84,7 @@ class AuditLogger:
             Audit log ID
         """
         audit_id = str(uuid.uuid4())
-        created_at = datetime.utcnow()
+        created_at = datetime.now(timezone.utc)
 
         audit_entry = {
             "id": audit_id,
@@ -220,7 +220,7 @@ class DriftDetector:
             severity=severity,
             mitigation_action=self._suggest_mitigation(name, severity),
             resolved=False,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
 
         # Log drift event
@@ -301,7 +301,7 @@ class PIIDetector:
             pii_value_hash=pii_value_hash,
             confidence=confidence,
             action_taken=action_taken,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
 
         logger.info(f"PII DETECTED: type={pii_type}, user={user_id}")

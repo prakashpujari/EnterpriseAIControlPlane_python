@@ -5,7 +5,7 @@ Handles document processing, embedding, and indexing.
 
 import uuid
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 import logging
@@ -77,7 +77,7 @@ class DocumentIngestor:
         Returns:
             IngestionResult with details
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             # Create document record
@@ -99,7 +99,7 @@ class DocumentIngestor:
             # Create embeddings and index
             vectors_created = await self._index_chunks(document_id, chunks)
 
-            duration = (datetime.utcnow() - start_time).total_seconds()
+            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
 
             result = IngestionResult(
                 document_id=document_id,
@@ -119,7 +119,7 @@ class DocumentIngestor:
                 document_id="",
                 chunks_created=0,
                 vectors_indexed=0,
-                duration_seconds=(datetime.utcnow() - start_time).total_seconds(),
+                duration_seconds=(datetime.now(timezone.utc) - start_time).total_seconds(),
                 status=f"error: {str(e)}",
             )
 
@@ -155,8 +155,8 @@ class DocumentIngestor:
             doc_metadata=document.metadata,
             is_active=True,
             created_by=user_id,
-            created_at=datetime.utcnow(),
-            indexed_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            indexed_at=datetime.now(timezone.utc),
         )
 
         await self.db.execute(stmt)
